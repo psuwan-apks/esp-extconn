@@ -19,7 +19,7 @@ void SettingsHandler::saveUartSettings(int portIndex, const UartSettings& settin
 }
 
 uint32_t SettingsHandler::getSerialConfig(uint8_t db, uint8_t pr, uint8_t sb) {
-    // Mapping for ESP32/ESP8266 serial configs
+    // Mapping for ESP32 serial configs
     if (db == 7) {
         if (pr == 2) return (sb == 1) ? SERIAL_7E1 : SERIAL_7E2;
         if (pr == 1) return (sb == 1) ? SERIAL_7O1 : SERIAL_7O2;

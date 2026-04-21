@@ -1,10 +1,10 @@
 # ESP External World Connector
 
-A modular, configuration-driven Arduino project for ESP32 and ESP8266. This project allows you to interface with various electronic components (sensors, actuators, communication modules) simply by editing a JSON configuration file, without needing to rewrite code for different pinouts.
+A modular, configuration-driven Arduino project for ESP32 (specifically configured for the WT32-ETH01 board). This project allows you to interface with various electronic components (sensors, actuators, communication modules) simply by editing a JSON configuration file, without needing to rewrite code for different pinouts.
 
 ## Features
 
-- **Hardware Agnostic**: Supports both ESP32 and ESP8266.
+- **Hardware Agnostic**: Supports ESP32.
 - **Config Driven**: All pin assignments and protocols (I2C, SPI, UART) are defined in `config.json`.
 - **Digital I/O**: Supports output and input (with internal pullups).
 - **Analog I/O**: Supports analog input and PWM output (including ESP32's `ledc` and DAC).
@@ -23,7 +23,6 @@ You must install the following library via the Arduino Library Manager:
 ### Hardware Support
 Install the board packages for your device:
 - **ESP32** by Espressif Systems
-- **ESP8266** by ESP8266 Community
 
 ## Project Structure
 
@@ -49,18 +48,18 @@ const char* HARDWARE_CONFIG = R"=====(
     {"pin": 4, "mode": "input_pullup", "name": "Button 1"}
   ],
   "analog": [
-    {"pin": 34, "mode": "input", "name": "LDR sensor"},
-    {"pin": 25, "mode": "output", "channel": 0, "freq": 5000, "res": 8, "name": "PWM Output"}
+    {"pin": 35, "mode": "input", "name": "ADC sensor"},
+    {"pin": 12, "mode": "output", "channel": 0, "freq": 5000, "res": 8, "name": "PWM Output"}
   ],
   "comm": {
-    "i2c": {"sda": 21, "scl": 22, "freq": 100000},
-    "spi": {"sck": 18, "miso": 19, "mosi": 23, "ss": 5},
+    "i2c": {"sda": 32, "scl": 33, "freq": 100000},
+    "spi": {"sck": 14, "miso": 12, "mosi": 15, "ss": 4},
     "uart": [
-      {"port": 2, "baud": 115200, "rx": 16, "tx": 17, "dataBits": 8, "parity": 0, "stopBits": 1}
+      {"port": 2, "baud": 115200, "rx": 5, "tx": 17, "dataBits": 8, "parity": 0, "stopBits": 1}
     ]
   },
   "sensors": {
-    "touch": [15, 13],
+    "touch": [15, 14],
     "hall": true
   }
 }
@@ -69,7 +68,7 @@ const char* HARDWARE_CONFIG = R"=====(
 
 ### 2. Upload Code
 1. Open `esp-extconn.ino` in the Arduino IDE.
-2. Select your board (ESP32 Dev Module, Generic ESP8266, etc.).
+2. Select your board (e.g., WT32-ETH01 or generic ESP32 Dev Module).
 3. Click **Upload**.
 
 (Note: You no longer need to upload external files to the device filesystem).

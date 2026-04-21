@@ -51,8 +51,8 @@ void loop() {
   // Serial.print("Button 4: "); Serial.println(btnState);
 
   // Example: Read Analog
-  // int val = AnalogHandler::read(34);
-  // Serial.print("Analog 34: "); Serial.println(val);
+  // int val = AnalogHandler::read(35);
+  // Serial.print("Analog 35: "); Serial.println(val);
 
   // Example: Read Touch
   // int touchVal = SensorHandler::readTouch(15);

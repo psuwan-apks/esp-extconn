@@ -24,14 +24,10 @@ void CommHandler::setup(JsonObject comms) {
         int mosi = spi["mosi"] | -1;
         int ss = spi["ss"] | -1;
         
-#if defined(ESP32)
         if (sck != -1 && miso != -1 && mosi != -1) {
             SPI.begin(sck, miso, mosi, ss);
             Serial.println("SPI Initialized");
         }
-#else
-        SPI.begin();
-#endif
     }
 
     // UART
@@ -60,17 +56,11 @@ void CommHandler::setup(JsonObject comms) {
                 Serial.print("UART "); Serial.print(port); Serial.println(" using JSON defaults");
             }
 
-#if defined(ESP32)
             if (port == 1) {
                 Serial1.begin(baud, config, rx, tx);
             } else if (port == 2) {
                 Serial2.begin(baud, config, rx, tx);
             }
-#elif defined(ESP8266)
-            if (port == 1) {
-                Serial1.begin(baud, (SerialConfig)config);
-            }
-#endif
             index++;
         }
     }
@@ -95,10 +85,6 @@ void CommHandler::i2cScan() {
 }
 
 void CommHandler::uartSend(int port, const char* data) {
-#if defined(ESP32)
     if (port == 1) Serial1.print(data);
     else if (port == 2) Serial2.print(data);
-#elif defined(ESP8266)
-    if (port == 1) Serial1.print(data);
-#endif
 }
