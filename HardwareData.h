@@ -7,6 +7,10 @@
 // the need for external filesystem (SPIFFS/LittleFS) uploads.
 const char* const HARDWARE_CONFIG = R"=====(
 {
+  "network": {
+    "ethernet": {"enable": true},
+    "wifi": {"enable": false, "ssid": "YOUR_WIFI_SSID", "password": "YOUR_WIFI_PASS"}
+  },
   "digital": [
     {"pin": 2, "mode": "output", "name": "Built-in LED"},
     {"pin": 4, "mode": "input_pullup", "name": "Button 1"}

@@ -3,7 +3,9 @@
 #include "AnalogHandler.h"
 #include "CommHandler.h"
 #include "SensorHandler.h"
+#include "NetworkHandler.h"
 #include "SettingsHandler.h"
+#include "WebHandler.h"
 
 void setup() {
   Serial.begin(115200);
@@ -20,6 +22,9 @@ void setup() {
   }
 
   JsonDocument& config = ConfigHandler::getConfig();
+
+  // Setup Network Components
+  NetworkHandler::setup();
 
   // Setup Digital IO
   if (config.containsKey("digital")) {
@@ -42,10 +47,14 @@ void setup() {
      SensorHandler::setup(config["sensors"]);
   }
 
+  WebHandler::setup();
+
   Serial.println("Initialization Complete.");
 }
 
 void loop() {
+  NetworkHandler::loop();  // Process DNS for captive portal in AP mode
+  WebHandler::loop();      // Handle HTTP clients
   // Example: Read a digital pin every second
   // bool btnState = DigitalHandler::read(4);
   // Serial.print("Button 4: "); Serial.println(btnState);
@@ -62,5 +71,11 @@ void loop() {
   // int hallVal = SensorHandler::readHall();
   // Serial.print("Hall: "); Serial.println(hallVal);
 
-  delay(2000);
+  static unsigned long lastUpdate = 0;
+  if (millis() - lastUpdate > 2000) {
+      lastUpdate = millis();
+      // Example: Read Analog
+      // int val = AnalogHandler::read(35);
+      // Serial.print("Analog 35: "); Serial.println(val);
+  }
 }

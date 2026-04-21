@@ -5,6 +5,9 @@ A modular, configuration-driven Arduino project for ESP32 (specifically configur
 ## Features
 
 - **Hardware Agnostic**: Supports ESP32.
+- **Network Support**: Configurable Ethernet (WT32-ETH01 LAN8720) and WiFi (STA/AP).
+- **Web Configuration Portal**: Built-in plain HTML web server hosted on port 80. Includes an automatic Captive Portal when in AP mode and password-protection for configuration settings. Default password is `admin1234`.
+- **EEPROM Storage**: Web configuration and passwords are persistently saved in EEPROM so configuration is loaded consistently across boot sequences.
 - **Config Driven**: All pin assignments and protocols (I2C, SPI, UART) are defined in `config.json`.
 - **Digital I/O**: Supports output and input (with internal pullups).
 - **Analog I/O**: Supports analog input and PWM output (including ESP32's `ledc` and DAC).
@@ -32,7 +35,9 @@ Install the board packages for your device:
 - `AnalogHandler`: Logic for analog and PWM pins.
 - `CommHandler`: Logic for I2C, SPI, and UART.
 - `SensorHandler`: Logic for ESP32-specific sensors.
-- `SettingsHandler` & `EEPROMHandler`: Manages saving and loading dynamic settings (like UART config) to EEPROM.
+- `NetworkHandler`: Logic for handling WiFi and Ethernet connectivity.
+- `WebHandler`: Lightweight plain-HTML Web Server to configure the device.
+- `SettingsHandler` & `EEPROMHandler`: Manages saving and loading dynamic App settings, web config arrays, and hardware configurations to persist flash EEPROM.
 - `HardwareData.h`: The hardware configuration file defined as a JSON string.
 
 ## Setup Instructions
@@ -43,6 +48,10 @@ Example for ESP32:
 ```json
 const char* HARDWARE_CONFIG = R"=====(
 {
+  "network": {
+    "ethernet": {"enable": true},
+    "wifi": {"enable": false, "ssid": "YOUR_WIFI_SSID", "password": "YOUR_WIFI_PASS"}
+  },
   "digital": [
     {"pin": 2, "mode": "output", "name": "Built-in LED"},
     {"pin": 4, "mode": "input_pullup", "name": "Button 1"}
@@ -80,6 +89,10 @@ Once booted, the ESP will:
 3. Load the internal `HARDWARE_CONFIG` from memory.
 4. Configure all defined pins and peripherals based on the JSON configuration.
 5. If I2C is enabled, it will print a list of detected addresses to the console.
+6. A Web Server stands up on Port 80.
+   - If in AP mode (e.g., connected to "ESP-Config-XXXX"), your device will automatically show a Captive Portal prompting for login.
+   - For all modes, going to the device IP displays the Default Status Page.
+   - Accessing Settings requires the default password `admin1234` (configurable via the Web UI).
 
 ## Customization
 To add custom logic for your specific sensors, you can modify the `loop()` function in `esp-extconn.ino` to read from the handlers using the simplified methods:

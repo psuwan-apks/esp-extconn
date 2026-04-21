@@ -41,14 +41,13 @@ void CommHandler::setup(JsonObject comms) {
             int tx = u["tx"] | -1;
             
             // Check EEPROM for overrides
-            UartSettings stored;
             uint32_t config = SERIAL_8N1;
-            if (SettingsHandler::loadUartSettings(index, stored)) {
-                baud = stored.baudrate;
-                config = SettingsHandler::getSerialConfig(stored.dataBits, stored.parity, stored.stopBits);
-                Serial.print("UART "); Serial.print(port); Serial.println(" loaded from EEPROM");
+            if (SettingsHandler::settings.uart.port == port) {
+                baud = SettingsHandler::settings.uart.baudrate;
+                config = SettingsHandler::getSerialConfig(SettingsHandler::settings.uart.dataBits, SettingsHandler::settings.uart.parity, SettingsHandler::settings.uart.stopBits);
+                Serial.print("UART "); Serial.print(port); Serial.println(" loaded from EEPROM global settings");
             } else {
-                // Use JSON defaults and potentially custom parity/stop bits if defined in JSON
+                // Use JSON defaults
                 int db = u["dataBits"] | 8;
                 int pr = u["parity"] | 0; // 0:None, 1:Odd, 2:Even
                 int sb = u["stopBits"] | 1;

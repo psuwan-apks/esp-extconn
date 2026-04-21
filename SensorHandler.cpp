@@ -1,22 +1,19 @@
 #include "SensorHandler.h"
 
 void SensorHandler::setup(JsonObject sensors) {
-    // Touch pins configuration can be handled here if specific thresholds are needed
     Serial.println("Sensors Initialized");
 }
 
 int SensorHandler::readTouch(int pin) {
-#if defined(ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C3) && !defined(CONFIG_IDF_TARGET_ESP32H2)
+    // touchRead() is still available in ESP32 core v3.x on original ESP32
+#if defined(CONFIG_IDF_TARGET_ESP32)
     return touchRead(pin);
 #else
-    return -1; // Not supported
+    return -1; // Not supported on newer ESP32 chips (S2/S3/C3/H2)
 #endif
 }
 
 int SensorHandler::readHall() {
-#if defined(ESP32) && !defined(CONFIG_IDF_TARGET_ESP32S2) && !defined(CONFIG_IDF_TARGET_ESP32S3) && !defined(CONFIG_IDF_TARGET_ESP32C3)
-    return hallRead();
-#else
-    return -1; // Not supported on newer ESP32 chips
-#endif
+    // hallRead() was REMOVED in ESP32 Arduino core v3.x entirely
+    return -1;
 }
