@@ -9,6 +9,7 @@
 
 class NetworkHandler {
 public:
+    static bool forceOTA;
     static void setup();
     static void loop();
     static void handleWiFi();

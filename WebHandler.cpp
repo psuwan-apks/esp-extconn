@@ -1,4 +1,6 @@
 #include "WebHandler.h"
+#include "NetworkHandler.h"
+#include <Update.h>
 
 // TODO: Replace this empty string with your base64 encoded image string.
 // Example: "iVBORw0KGgoAAAANSUhEUgAA..."
@@ -15,6 +17,9 @@ void WebHandler::setup() {
     server.on("/auth", HTTP_POST, handleAuth);
     server.on("/settings", HTTP_GET, handleRoot);
     server.on("/save", HTTP_POST, handleSave);
+    server.on("/ota", HTTP_GET, handleOTA);
+    server.on("/ota/save", HTTP_POST, handleOTASave);
+    server.on("/update", HTTP_POST, handleUpdate, handleUpdateUpload);
     server.onNotFound(captivePortalRedirect);
 
     server.begin();
@@ -47,6 +52,12 @@ void WebHandler::captivePortalRedirect() {
 }
 
 void WebHandler::handleStatus() {
+    if (NetworkHandler::forceOTA) {
+        server.sendHeader("Location", "/ota", true);
+        server.send(302, "text/plain", "");
+        return;
+    }
+
     // In AP mode, require login before showing any page
     if (SettingsHandler::settings.wifi_mode == 1 && !checkAuth()) {
         server.sendHeader("Location", "/login", true);
@@ -83,7 +94,8 @@ void WebHandler::handleLogin() {
 void WebHandler::handleAuth() {
     if (server.hasArg("password")) {
         if (server.arg("password") == SettingsHandler::settings.web_pass) {
-            server.sendHeader("Location", "/settings", true);
+            String target = NetworkHandler::forceOTA ? "/ota" : "/settings";
+            server.sendHeader("Location", target, true);
             server.sendHeader("Set-Cookie", "auth=1; Path=/; Max-Age=3600");
             server.send(302, "text/plain", "Login Successful");
             return;
@@ -138,7 +150,9 @@ void WebHandler::handleRoot() {
     html += "Admin Password: <input type='text' name='web_pass' value='" + String(SettingsHandler::settings.web_pass) + "'><br>";
     
     html += "<br><input type='submit' value='Save & Reboot'>";
-    html += "</form></body></html>";
+    html += "</form>";
+    html += "<hr><p><a href='/ota' style='color: #007bff; text-decoration: none; font-weight: bold;'>Go to Firmware Update (OTA)</a></p>";
+    html += "</body></html>";
 
     server.send(200, "text/html", html);
 }
@@ -180,4 +194,136 @@ void WebHandler::handleSave() {
     server.send(200, "text/html", html);
     delay(1000);
     ESP.restart();
+}
+
+void WebHandler::handleOTA() {
+    if (!checkAuth()) {
+        server.sendHeader("Location", "/login", true);
+        server.send(302, "text/plain", "");
+        return;
+    }
+
+    String html = "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'>";
+    html += "<style>";
+    html += "body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }";
+    html += ".container { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border-radius: 20px; padding: 40px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); width: 90%; max-width: 400px; text-align: center; }";
+    html += "h1 { margin-bottom: 20px; font-weight: 300; letter-spacing: 2px; color: #4ecca3; }";
+    html += "p { color: #8e8e8e; margin-bottom: 30px; }";
+    html += ".upload-area { border: 2px dashed rgba(255,255,255,0.2); padding: 30px; border-radius: 15px; cursor: pointer; transition: 0.3s; position: relative; }";
+    html += ".upload-area:hover { border-color: #4ecca3; background: rgba(78, 204, 163, 0.05); }";
+    html += "input[type='file'] { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }";
+    html += ".btn { background: #4ecca3; color: #1a1a2e; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 20px; width: 100%; text-transform: uppercase; letter-spacing: 1px; }";
+    html += ".btn:hover { background: #45b291; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(78, 204, 163, 0.4); }";
+    html += ".progress-container { width: 100%; background: rgba(255,255,255,0.1); border-radius: 10px; margin-top: 20px; display: none; }";
+    html += ".progress-bar { height: 10px; width: 0%; background: #4ecca3; border-radius: 10px; transition: 0.1s; }";
+    html += ".status-text { margin-top: 10px; font-size: 0.9em; display: none; }";
+    html += "</style>";
+    html += "<script>";
+    html += "function startUpdate() {";
+    html += "  var fileInput = document.getElementById('file');";
+    html += "  if (fileInput.files.length === 0) { alert('Please select a file'); return; }";
+    html += "  var formData = new FormData();";
+    html += "  formData.append('update', fileInput.files[0]);";
+    html += "  document.getElementById('upload-ui').style.display = 'none';";
+    html += "  document.getElementById('progress-container').style.display = 'block';";
+    html += "  document.getElementById('status-text').style.display = 'block';";
+    html += "  var xhr = new XMLHttpRequest();";
+    html += "  xhr.open('POST', '/update', true);";
+    html += "  xhr.upload.onprogress = function(e) {";
+    html += "    if (e.lengthComputable) {";
+    html += "      var percent = (e.loaded / e.total) * 100;";
+    html += "      document.getElementById('progress-bar').style.width = percent + '%';";
+    html += "      document.getElementById('status-text').innerHTML = 'Uploading: ' + Math.round(percent) + '%';";
+    html += "    }";
+    html += "  };";
+    html += "  xhr.onload = function() {";
+    html += "    if (xhr.status == 200) {";
+    html += "      document.getElementById('status-text').innerHTML = 'Update Successful! Rebooting...';";
+    html += "      setTimeout(function() { window.location.href = '/'; }, 5000);";
+    html += "    } else {";
+    html += "      document.getElementById('status-text').innerHTML = 'Error: ' + xhr.responseText;";
+    html += "      document.getElementById('upload-ui').style.display = 'block';";
+    html += "    }";
+    html += "  };";
+    html += "  xhr.send(formData);";
+    html += "}";
+    html += "</script></head><body>";
+    html += "<div class='container'>";
+    html += "<h1>OTA Update</h1>";
+    html += "<p>Upload new firmware binary</p>";
+    html += "<div id='upload-ui'>";
+    html += "  <div class='upload-area'>";
+    html += "    <p id='file-name'>Drop or Click to select .bin</p>";
+    html += "    <input type='file' id='file' accept='.bin' onchange=\"document.getElementById('file-name').innerHTML = this.files[0].name\">";
+    html += "  </div>";
+    html += "  <button class='btn' onclick='startUpdate()'>Flash Firmware</button>";
+    html += "</div>";
+    
+    html += "<div id='password-config' style='margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);'>";
+    html += "  <h3 style='font-size: 1.1em; color: #4ecca3; margin-bottom: 15px;'>Manage Password</h3>";
+    html += "  <form action='/ota/save' method='POST'>";
+    html += "    <div style='display: flex; gap: 10px;'>";
+    html += "      <input type='password' name='new_pass' placeholder='New Password' style='flex: 1; padding: 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: #fff;'>";
+    html += "      <button type='submit' style='background: #4ecca3; color: #1a1a2e; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;'>Save</button>";
+    html += "    </div>";
+    html += "  </form>";
+    html += "</div>";
+
+    html += "<div class='progress-container' id='progress-container'><div class='progress-bar' id='progress-bar'></div></div>";
+    html += "<div class='status-text' id='status-text'>Initializing...</div>";
+    html += "<p style='margin-top: 20px;'><a href='/settings' style='color: #4ecca3; text-decoration: none;'>&larr; Back to Settings</a></p>";
+    html += "</div></body></html>";
+
+    server.send(200, "text/html", html);
+}
+
+void WebHandler::handleUpdate() {
+    server.sendHeader("Connection", "close");
+    server.send(Update.hasError() ? 500 : 200, "text/plain", (Update.hasError()) ? Update.errorString() : "OK");
+    ESP.restart();
+}
+
+void WebHandler::handleUpdateUpload() {
+    HTTPUpload& upload = server.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+        Serial.printf("Update: %s\n", upload.filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { // start with max available size
+            Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+            Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_END) {
+        if (Update.end(true)) { // true to set the size to the current progress
+            Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+        } else {
+            Update.printError(Serial);
+        }
+    }
+}
+
+void WebHandler::handleOTASave() {
+    if (!checkAuth()) {
+        server.sendHeader("Location", "/login", true);
+        server.send(302, "text/plain", "");
+        return;
+    }
+
+    if (server.hasArg("new_pass")) {
+        String newPass = server.arg("new_pass");
+        if (newPass.length() > 0) {
+            strncpy(SettingsHandler::settings.web_pass, newPass.c_str(), sizeof(SettingsHandler::settings.web_pass) - 1);
+            SettingsHandler::saveSettings();
+            
+            String html = "<html><head><meta http-equiv='refresh' content='2;url=/ota'></head>";
+            html += "<body style='background: #1a1a2e; color: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif;'>";
+            html += "<div style='text-align: center;'><h2>Password Updated Successfully!</h2><p>Returning to OTA page...</p></div>";
+            html += "</body></html>";
+            server.send(200, "text/html", html);
+            return;
+        }
+    }
+    server.sendHeader("Location", "/ota", true);
+    server.send(302, "text/plain", "");
 }

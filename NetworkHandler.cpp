@@ -1,6 +1,7 @@
 #include "NetworkHandler.h"
 
 bool NetworkHandler::eth_connected = false;
+bool NetworkHandler::forceOTA = false;
 DNSServer NetworkHandler::dnsServer;
 
 void NetworkHandler::onEvent(WiFiEvent_t event) {
@@ -58,7 +59,7 @@ void NetworkHandler::setup() {
 }
 
 void NetworkHandler::loop() {
-    if (SettingsHandler::settings.wifi_mode == 1) {
+    if (SettingsHandler::settings.wifi_mode == 1 || forceOTA) {
         dnsServer.processNextRequest();
     }
 }
@@ -86,7 +87,7 @@ void NetworkHandler::handleEthernet() {
 }
 
 void NetworkHandler::handleWiFi() {
-    if (SettingsHandler::settings.wifi_mode == 1) {
+    if (SettingsHandler::settings.wifi_mode == 1 || forceOTA) {
         // AP Mode
         Serial.println("Starting WiFi AP Mode...");
         WiFi.mode(WIFI_AP);

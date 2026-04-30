@@ -20,6 +20,10 @@ private:
     static void handleAuth();
     static bool checkAuth();
     static void captivePortalRedirect();
+    static void handleOTA();
+    static void handleUpdate();
+    static void handleUpdateUpload();
+    static void handleOTASave();
 };
 
 #endif

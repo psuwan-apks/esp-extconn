@@ -9,7 +9,33 @@
 
 void setup() {
   Serial.begin(115200);
-  delay(1000);
+  delay(500);
+  
+  // Check for OTA mode trigger (Pin 4 held > 5 seconds)
+  pinMode(4, INPUT_PULLUP);
+  Serial.println("Checking OTA mode trigger (hold button for 5s)...");
+  if (digitalRead(4) == LOW) {
+    unsigned long start = millis();
+    bool held = true;
+    while (millis() - start < 5000) {
+      if (digitalRead(4) == HIGH) {
+        held = false;
+        break;
+      }
+      if ((millis() - start) % 1000 == 0) {
+        Serial.print(".");
+      }
+      delay(10);
+    }
+    if (held) {
+      Serial.println("\nOTA Mode Activated!");
+      NetworkHandler::forceOTA = true;
+    } else {
+      Serial.println("\nButton released, normal boot.");
+    }
+  }
+
+  delay(500);
   Serial.println("\n--- ESP External World Connector ---");
 
   // Initialize EEPROM

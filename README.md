@@ -27,6 +27,47 @@ You must install the following library via the Arduino Library Manager:
 Install the board packages for your device:
 - **ESP32** by Espressif Systems
 
+## Pin Mapping — WT32-ETH01
+
+```
+                    +============================+
+                    |    ####################    |
+                    |    #  [ RJ45 / ETH ]  #    |
+                    |    ####################    |
+                    +----------------------------+
+                    |                            |
+  (Enable)    EN ---|1 o                      o 1|--- IO39   (Input Only)
+  (I2C/CFG) IO32 ---|2 o                      o 2|--- IO36   (Input Only)
+ (RS485 EN) IO33 ---|3 o      [ ESP32 ]       o 3|--- IO15   (GPIO)
+  (UART2 RX) IO5 ---|4 o                      o 4|--- IO14   (GPIO / ADC)
+  (UART2 TX) IO17 ---|5 o    [ LAN8720A ]     o 5|--- IO12   (GPIO / ADC)
+         GND ---|6 o                      o 6|--- IO35   (Input Only)
+         3V3 ---|7 o                      o 7|--- IO4    (GPIO)
+         GND ---|8 o                      o 8|--- IO2    (GPIO / Boot LED)
+          5V ---|9 o                      o 9|--- GND
+        LINK ---|10 o                    o 10|--- NC
+                    |                            |
+                    +----------------------------+
+                    |  [ PROG ]                  |
+                    |  TXD0  RXD0  IO0  GND      |
+                    |    o     o    o    o        |
+                    +============================+
+```
+
+**Left side** (pins 1–10) — Control & Power  
+**Right side** (pins 1–10) — GPIO / Analog
+
+> **Reserved / Internal GPIOs (do not use for general I/O):**
+> | GPIO | Used For |
+> |------|----------|
+> | `GPIO 0`  | LAN8720 external oscillator |
+> | `GPIO 16` | ETH PHY power — must be set `HIGH` to enable Ethernet |
+> | `GPIO 18` | MDIO — Ethernet PHY management |
+> | `GPIO 23` | MDC — Ethernet PHY management |
+>
+> **Input-Only:** IO35, IO36, IO39 — no output, no internal pull resistors.  
+> **Power:** Use **either** 3V3 **or** 5V — never both at the same time.
+
 ## Project Structure
 
 - `esp-extconn.ino`: Main project entry point.
