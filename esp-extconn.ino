@@ -3,11 +3,39 @@
 #include "AnalogHandler.h"
 #include "CommHandler.h"
 #include "SensorHandler.h"
+#include "NetworkHandler.h"
 #include "SettingsHandler.h"
+#include "WebHandler.h"
 
 void setup() {
   Serial.begin(115200);
-  delay(1000);
+  delay(500);
+  
+  // Check for OTA mode trigger (Pin 4 held > 5 seconds)
+  pinMode(4, INPUT_PULLUP);
+  Serial.println("Checking OTA mode trigger (hold button for 5s)...");
+  if (digitalRead(4) == LOW) {
+    unsigned long start = millis();
+    bool held = true;
+    while (millis() - start < 5000) {
+      if (digitalRead(4) == HIGH) {
+        held = false;
+        break;
+      }
+      if ((millis() - start) % 1000 == 0) {
+        Serial.print(".");
+      }
+      delay(10);
+    }
+    if (held) {
+      Serial.println("\nOTA Mode Activated!");
+      NetworkHandler::forceOTA = true;
+    } else {
+      Serial.println("\nButton released, normal boot.");
+    }
+  }
+
+  delay(500);
   Serial.println("\n--- ESP External World Connector ---");
 
   // Initialize EEPROM
@@ -20,6 +48,9 @@ void setup() {
   }
 
   JsonDocument& config = ConfigHandler::getConfig();
+
+  // Setup Network Components
+  NetworkHandler::setup();
 
   // Setup Digital IO
   if (config.containsKey("digital")) {
@@ -42,17 +73,21 @@ void setup() {
      SensorHandler::setup(config["sensors"]);
   }
 
+  WebHandler::setup();
+
   Serial.println("Initialization Complete.");
 }
 
 void loop() {
+  NetworkHandler::loop();  // Process DNS for captive portal in AP mode
+  WebHandler::loop();      // Handle HTTP clients
   // Example: Read a digital pin every second
   // bool btnState = DigitalHandler::read(4);
   // Serial.print("Button 4: "); Serial.println(btnState);
 
   // Example: Read Analog
-  // int val = AnalogHandler::read(34);
-  // Serial.print("Analog 34: "); Serial.println(val);
+  // int val = AnalogHandler::read(35);
+  // Serial.print("Analog 35: "); Serial.println(val);
 
   // Example: Read Touch
   // int touchVal = SensorHandler::readTouch(15);
@@ -62,5 +97,11 @@ void loop() {
   // int hallVal = SensorHandler::readHall();
   // Serial.print("Hall: "); Serial.println(hallVal);
 
-  delay(2000);
+  static unsigned long lastUpdate = 0;
+  if (millis() - lastUpdate > 2000) {
+      lastUpdate = millis();
+      // Example: Read Analog
+      // int val = AnalogHandler::read(35);
+      // Serial.print("Analog 35: "); Serial.println(val);
+  }
 }

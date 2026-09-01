@@ -24,14 +24,10 @@ void CommHandler::setup(JsonObject comms) {
         int mosi = spi["mosi"] | -1;
         int ss = spi["ss"] | -1;
         
-#if defined(ESP32)
         if (sck != -1 && miso != -1 && mosi != -1) {
             SPI.begin(sck, miso, mosi, ss);
             Serial.println("SPI Initialized");
         }
-#else
-        SPI.begin();
-#endif
     }
 
     // UART
@@ -45,14 +41,13 @@ void CommHandler::setup(JsonObject comms) {
             int tx = u["tx"] | -1;
             
             // Check EEPROM for overrides
-            UartSettings stored;
             uint32_t config = SERIAL_8N1;
-            if (SettingsHandler::loadUartSettings(index, stored)) {
-                baud = stored.baudrate;
-                config = SettingsHandler::getSerialConfig(stored.dataBits, stored.parity, stored.stopBits);
-                Serial.print("UART "); Serial.print(port); Serial.println(" loaded from EEPROM");
+            if (SettingsHandler::settings.uart.port == port) {
+                baud = SettingsHandler::settings.uart.baudrate;
+                config = SettingsHandler::getSerialConfig(SettingsHandler::settings.uart.dataBits, SettingsHandler::settings.uart.parity, SettingsHandler::settings.uart.stopBits);
+                Serial.print("UART "); Serial.print(port); Serial.println(" loaded from EEPROM global settings");
             } else {
-                // Use JSON defaults and potentially custom parity/stop bits if defined in JSON
+                // Use JSON defaults
                 int db = u["dataBits"] | 8;
                 int pr = u["parity"] | 0; // 0:None, 1:Odd, 2:Even
                 int sb = u["stopBits"] | 1;
@@ -60,17 +55,11 @@ void CommHandler::setup(JsonObject comms) {
                 Serial.print("UART "); Serial.print(port); Serial.println(" using JSON defaults");
             }
 
-#if defined(ESP32)
             if (port == 1) {
                 Serial1.begin(baud, config, rx, tx);
             } else if (port == 2) {
                 Serial2.begin(baud, config, rx, tx);
             }
-#elif defined(ESP8266)
-            if (port == 1) {
-                Serial1.begin(baud, (SerialConfig)config);
-            }
-#endif
             index++;
         }
     }
@@ -95,10 +84,6 @@ void CommHandler::i2cScan() {
 }
 
 void CommHandler::uartSend(int port, const char* data) {
-#if defined(ESP32)
     if (port == 1) Serial1.print(data);
     else if (port == 2) Serial2.print(data);
-#elif defined(ESP8266)
-    if (port == 1) Serial1.print(data);
-#endif
 }
